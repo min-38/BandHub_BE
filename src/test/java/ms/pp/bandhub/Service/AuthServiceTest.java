@@ -1,9 +1,9 @@
 package ms.pp.bandhub.Service;
 
-
 import ms.pp.bandhub.domains.User;
-import ms.pp.bandhub.dto.responses.AuthResponse;
+import ms.pp.bandhub.dto.responses.LoginResponse;
 import ms.pp.bandhub.repositories.UserRepository;
+import ms.pp.bandhub.security.jwt.JwtTokenGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +27,9 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;    // 가짜 비밀번호 암호화 객체
 
+    @Mock
+    private JwtTokenGenerator jwtTokenGenerator; // 가짜 JWT 생성 객체 (추가)
+
     @InjectMocks
     private AuthService authService;            // 테스트 대상 (Mock 객체들을 주입받음)
 
@@ -35,6 +38,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         user = new User();
+        user.setId(1L); // 사용자 ID 설정 (JWT 생성 시 필요)
         user.setEmail("test@example.com");
         user.setPassword("encodedPassword"); // 실제로 저장될 암호화된 비밀번호
     }
@@ -45,13 +49,19 @@ class AuthServiceTest {
         // Given (가짜 데이터 설정)
         when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password123", user.getPassword())).thenReturn(true);
+        when(jwtTokenGenerator.createAccessToken(user.getId())).thenReturn("mockAccessToken");          // JWT Access Token 생성
+        when(jwtTokenGenerator.createRefreshToken(user.getId())).thenReturn("mockRefreshToken");        // JWT Refresh Token 생성
 
         // When (테스트 실행)
-        AuthResponse response = authService.signin("test@example.com", "password123");
+        LoginResponse response = authService.signin("test@example.com", "password123");
 
         // Then (검증)
-        assertTrue(response.isStatus()); // 성공 상태 확인
-        assertEquals("로그인 성공", response.getMessage()); // 메시지 확인
+        assertTrue(response.isStatus());
+        assertEquals("로그인 성공", response.getMessage());
+        assertNotNull(response.getAccessToken());
+        assertNotNull(response.getRefreshToken());
+        assertEquals("mockAccessToken", response.getAccessToken());
+        assertEquals("mockRefreshToken", response.getRefreshToken());
     }
 
     @Test
@@ -61,9 +71,12 @@ class AuthServiceTest {
         when(userRepository.findByEmail("notfound@example.com")).thenReturn(Optional.empty());
 
         // When & Then (예외 발생 검증)
-        AuthResponse response = authService.signin("notfound@example.com", "wrongpassword");
+        LoginResponse response = authService.signin("notfound@example.com", "wrongpassword");
 
+        assertFalse(response.isStatus());
         assertEquals("이메일 또는 비밀번호가 일치하지 않습니다.", response.getMessage());
+        assertNull(response.getAccessToken());
+        assertNull(response.getRefreshToken());
     }
 
     @Test
@@ -74,10 +87,12 @@ class AuthServiceTest {
         when(passwordEncoder.matches("wrongpassword", user.getPassword())).thenReturn(false);
 
         // When
-        AuthResponse response = authService.signin("test@example.com", "wrongpassword");
+        LoginResponse response = authService.signin("test@example.com", "wrongpassword");
 
         // Then (로그인 실패 확인)
         assertFalse(response.isStatus()); // 실패 상태 확인
         assertEquals("이메일 또는 비밀번호가 일치하지 않습니다.", response.getMessage()); // 메시지 확인
+        assertNull(response.getAccessToken());
+        assertNull(response.getRefreshToken());
     }
 }
