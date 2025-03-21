@@ -1,7 +1,8 @@
-package ms.pp.bandhub.dto.responses;
+package ms.pp.bandhub.dto.responses.auth;
 
 import lombok.Builder;
 import lombok.Getter;
+import ms.pp.bandhub.dto.responses.ResponseDTO;
 
 @Getter
 public class LoginResponse extends ResponseDTO {

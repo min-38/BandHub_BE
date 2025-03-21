@@ -1,7 +1,8 @@
-package ms.pp.bandhub.Service;
+package ms.pp.bandhub.Service.Auth;
 
+import ms.pp.bandhub.Service.AuthService;
 import ms.pp.bandhub.domains.User;
-import ms.pp.bandhub.dto.responses.LoginResponse;
+import ms.pp.bandhub.dto.responses.auth.LoginResponse;
 import ms.pp.bandhub.repositories.UserRepository;
 import ms.pp.bandhub.security.jwt.JwtTokenGenerator;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,21 +20,21 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+class AuthService_Login_Test {
 
     @Mock
-    private UserRepository userRepository;      // 가짜 데이터베이스
+    private UserRepository userRepository;
 
     @Mock
-    private PasswordEncoder passwordEncoder;    // 가짜 비밀번호 암호화 객체
+    private PasswordEncoder passwordEncoder;
 
     @Mock
-    private JwtTokenGenerator jwtTokenGenerator; // 가짜 JWT 생성 객체 (추가)
+    private JwtTokenGenerator jwtTokenGenerator;
 
     @InjectMocks
-    private AuthService authService;            // 테스트 대상 (Mock 객체들을 주입받음)
+    private AuthService authService;
 
-    private User user;                          // 테스트용 유저 객체
+    private User user;
 
     @BeforeEach
     void setUp() {

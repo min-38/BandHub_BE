@@ -11,3 +11,8 @@ spring:
     secret: ${JWT_SECRET}
     access-expiration: ${JWT_ACCESS_EXPIRATION}
     refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+
+turnstile:
+  url: ${TURNSTILE_URL}
+  secret: ${TURNSTILE_SECRET_KEY}
+  siteKey: ${TURNSTILE_SITE_KEY}
