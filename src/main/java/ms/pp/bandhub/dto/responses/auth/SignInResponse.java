@@ -5,12 +5,12 @@ import lombok.Getter;
 import ms.pp.bandhub.dto.responses.ResponseDTO;
 
 @Getter
-public class LoginResponse extends ResponseDTO {
+public class SignInResponse extends ResponseDTO {
     private String accessToken;    // Access Token
     private String refreshToken;   // Refresh Token
 
     @Builder
-    public LoginResponse (boolean status, String message, String accessToken, String refreshToken) {
+    public SignInResponse (boolean status, String message, String accessToken, String refreshToken) {
         super(status, message);
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;

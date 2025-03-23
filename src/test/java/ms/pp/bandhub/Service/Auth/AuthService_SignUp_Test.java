@@ -1,137 +1,220 @@
 package ms.pp.bandhub.Service.Auth;
 
-import ms.pp.bandhub.Service.AuthService;
 import ms.pp.bandhub.Service.CaptchaService;
-import ms.pp.bandhub.dto.responses.auth.SignUpResponse;
+import ms.pp.bandhub.domains.User;
 import ms.pp.bandhub.repositories.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.junit.jupiter.api.extension.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class)
+@SpringBootTest
+@AutoConfigureMockMvc
+@Transactional
 class AuthService_SignUp_Test {
 
-    @Mock
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
     private UserRepository userRepository;
 
-    @Mock
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
-    @Mock
+    @MockBean
     private CaptchaService captchaService;
 
-    @InjectMocks
-    private AuthService authService;
+    @BeforeEach
+    void setUp() {
+        // 실제 유저 저장 (DB에 직접 저장)
+        User user = new User();
+        user.setEmail("test@example.com");
+        user.setNickname("test");
+        user.setPassword(passwordEncoder.encode("Password123!@#"));  // 비밀번호 암호화
 
-    String email = "test@test.com";
-    String nickname = "tester";
-    String password = "test1234";
-    String turnstile = "testkey";
-
-    @Test
-    @DisplayName("사용자 회원가입 테스트 - 정상 회원가입")
-    void signup_success_test() {
-        // Given (가짜 데이터 설정)
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(userRepository.existsByNickname(nickname)).thenReturn(false);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(true);
-        when(passwordEncoder.encode(password)).thenReturn("encodedPassword");
-
-        // When (테스트 실행)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
-
-        // Then (검증)
-        assertTrue(response.isStatus());
-        assertEquals("회원가입 성공", response.getMessage());
+        userRepository.save(user);
     }
 
     @Test
-    @DisplayName("사용자 회원가입 테스트 - 존재하는 이메일일 때")
-    void signup_fail_exist_email_test() {
-        // Given (이메일이 없는 경우)
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-        when(userRepository.existsByNickname(nickname)).thenReturn(false);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(true);
+    @DisplayName("통합 테스트 - 정상 회원가입")
+    void signup_success_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "newUser@example.com",
+                "nickname": "newUser",
+                "password": "Password123!@#",
+                "password_confirm": "Password123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
 
-        // When & Then (예외 발생 검증)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(true);
 
-        assertFalse(response.isStatus());
-        assertEquals("", response.getMessage());
-        assertEquals("중복 이메일", response.getErrors().get("email"));
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(true))
+                .andExpect(jsonPath("$.message").value("회원가입 성공"))
+                .andExpect(jsonPath("$.errors").isEmpty());
     }
 
     @Test
-    @DisplayName("사용자 회원가입 테스트 - 존재하는 닉네임일 때")
-    void signup_fail_exist_nickname_test() {
-        // Given (이메일이 없는 경우)
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(userRepository.existsByNickname(nickname)).thenReturn(true);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(true);
+    @DisplayName("통합 테스트 - 존재하는 이메일일 때")
+    void signup_fail_exist_email_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "test@example.com",
+                "nickname": "newUser",
+                "password": "Password123!@#",
+                "password_confirm": "Password123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
 
-        // When & Then (예외 발생 검증)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(true);
 
-        assertFalse(response.isStatus());
-        assertEquals("", response.getMessage());
-        assertEquals("중복 닉네임", response.getErrors().get("nickname"));
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(false))
+                .andExpect(jsonPath("$.message").value(""))
+                .andExpect(jsonPath("$.errors.email").value("중복 이메일"));
     }
 
     @Test
-    @DisplayName("사용자 회원가입 테스트 - turnstile 실패 때")
-    void signup_fail_turnstile_test() {
-        // Given (이메일이 없는 경우)
-        when(userRepository.existsByEmail(email)).thenReturn(false);
-        when(userRepository.existsByNickname(nickname)).thenReturn(false);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(false);
+    @DisplayName("통합 테스트 - 존재하는 닉네임일 때")
+    void signup_fail_exist_nickname_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "newUser@example.com",
+                "nickname": "test",
+                "password": "Password123!@#",
+                "password_confirm": "Password123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
 
-        // When & Then (예외 발생 검증)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(true);
 
-        assertFalse(response.isStatus());
-        assertEquals("", response.getMessage());
-        assertEquals("recaptcha 실패", response.getErrors().get("recaptcha"));
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(false))
+                .andExpect(jsonPath("$.message").value(""))
+                .andExpect(jsonPath("$.errors.nickname").value("중복 닉네임"));
     }
 
     @Test
-    @DisplayName("사용자 회원가입 테스트 - 존재하는 이메일, 닉네임일 때")
-    void signup_fail_exist_email_and_nickname_test() {
-        // Given (이메일이 없는 경우)
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-        when(userRepository.existsByNickname(nickname)).thenReturn(true);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(true);
+    @DisplayName("통합 테스트 - 비밀번호가 일치하지 않을 때")
+    void signup_fail_password_confirm0_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "newUser@example.com",
+                "nickname": "newUser",
+                "password": "Password123!@#",
+                "password_confirm": "WrongPassword123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
 
-        // When & Then (예외 발생 검증)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(true);
 
-        assertFalse(response.isStatus());
-        assertEquals("", response.getMessage());
-        assertEquals("중복 이메일", response.getErrors().get("email"));
-        assertEquals("중복 닉네임", response.getErrors().get("nickname"));
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(false))
+                .andExpect(jsonPath("$.message").value(""))
+                .andExpect(jsonPath("$.errors.password").value("비밀번호 불일치"));
     }
 
     @Test
-    @DisplayName("사용자 회원가입 테스트 - 존재하는 이메일, 닉네임이고 recaptcha 실패 때")
-    void signup_fail_exist_email_and_nickname_and_recaptcha_test() {
-        // Given (이메일이 없는 경우)
-        when(userRepository.existsByEmail(email)).thenReturn(true);
-        when(userRepository.existsByNickname(nickname)).thenReturn(true);
-        when(captchaService.verifyTurnstile(turnstile)).thenReturn(false);
+    @DisplayName("통합 테스트 - recaptcha 실패")
+    void signup_fail_recaptcha_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "newUser@example.com",
+                "nickname": "newUser",
+                "password": "Password123!@#",
+                "password_confirm": "WrongPassword123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
 
-        // When & Then (예외 발생 검증)
-        SignUpResponse response = authService.signup(email, nickname, password, turnstile);
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(false);
 
-        assertFalse(response.isStatus());
-        assertEquals("", response.getMessage());
-        assertEquals("중복 이메일", response.getErrors().get("email"));
-        assertEquals("중복 닉네임", response.getErrors().get("nickname"));
-        assertEquals("recaptcha 실패", response.getErrors().get("recaptcha"));
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(false))
+                .andExpect(jsonPath("$.message").value(""))
+                .andExpect(jsonPath("$.errors.recaptcha").value("recaptcha 실패"));
+    }
+
+    @Test
+    @DisplayName("통합 테스트 - 이메일 유효성 검사 실패")
+    void signup_fail_exist_email_validation_test() throws Exception {
+        // Given
+        String json = """
+            {
+                "email": "newUser",
+                "nickname": "newUser",
+                "password": "Password123!@#",
+                "password_confirm": "Password123!@#",
+                "turnstile": "recaptcha"
+            }
+        """;
+
+        // When
+        when(captchaService.verifyTurnstile(anyString())).thenReturn(true);
+
+        // Then
+        mockMvc.perform(post("/api/auth/signup")
+                        .with(csrf())
+                        .contentType(String.valueOf(MediaType.APPLICATION_JSON))
+                        .content(json))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(false))
+                .andExpect(jsonPath("$.message").value(""))
+                .andExpect(jsonPath("$.errors.email").value("이메일 형식이 아닙니다."));
     }
 }

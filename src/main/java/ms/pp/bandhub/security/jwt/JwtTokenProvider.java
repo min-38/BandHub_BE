@@ -1,6 +1,7 @@
 package ms.pp.bandhub.security.jwt;
 
 import io.jsonwebtoken.*;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -22,11 +23,11 @@ public class JwtTokenProvider {
 
     private SecretKey secretKey;
 
-    @jakarta.annotation.PostConstruct
-    private void init(@Value("${spring.jwt.secret}") String secretKey) {
-        this.secretKey = new SecretKeySpec(
-                secretKeyString.getBytes(),
-                Jwts.SIG.HS256.key().build().getAlgorithm()
+    @PostConstruct
+    private void init() {
+        secretKey = new SecretKeySpec(
+            secretKeyString.getBytes(),
+            Jwts.SIG.HS256.key().build().getAlgorithm()
         );
     }
 

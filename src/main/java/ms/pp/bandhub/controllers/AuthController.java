@@ -1,11 +1,12 @@
 package ms.pp.bandhub.controllers;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import ms.pp.bandhub.Service.AuthService;
 import ms.pp.bandhub.dto.requests.auth.SignInRequest;
 import ms.pp.bandhub.dto.requests.auth.SignUpRequest;
 import ms.pp.bandhub.dto.responses.ResponseDTO;
-import ms.pp.bandhub.dto.responses.auth.LoginResponse;
+import ms.pp.bandhub.dto.responses.auth.SignInResponse;
 import ms.pp.bandhub.dto.responses.auth.SignUpResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,20 +20,22 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signin")
-    public ResponseEntity<LoginResponse> signin(@RequestBody final SignInRequest signInRequest)
+    public ResponseEntity<SignInResponse> signin(@Valid @RequestBody final SignInRequest signInRequest)
     {
-        LoginResponse response = authService.signin(signInRequest.getEmail(), signInRequest.getPassword());
+        SignInResponse response = authService.signin(signInRequest);
 
-        // 로그인 실패 시 401 Unauthorized 응답 반환
         if (!response.isStatus())
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<SignUpResponse> signup(@RequestBody final SignUpRequest signUpRequest)
+    public ResponseEntity<SignUpResponse> signup(@Valid @RequestBody final SignUpRequest signUpRequest)
     {
-        SignUpResponse response = authService.signup(signUpRequest.getEmail(), signUpRequest.getNickname(), signUpRequest.getPassword(), signUpRequest.getTurnstile());
+        SignUpResponse response = authService.signup(signUpRequest);
+
+        if (!response.isStatus())
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         return ResponseEntity.ok(response);
     }
 
