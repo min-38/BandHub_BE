@@ -39,7 +39,6 @@ dependencies {
 
     // Test
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.12.0")
     testImplementation("org.mockito:mockito-core:5.16.0")
     testImplementation("org.assertj:assertj-core:3.27.3")
     testImplementation("org.springframework.security:spring-security-test")
